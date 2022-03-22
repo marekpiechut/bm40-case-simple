@@ -11,7 +11,12 @@ $fa = 1;
 $fs = 0.4;
 
 padding=0;
-plate_dimensions=[button_spacing * 12, button_spacing * 4, plate_thickness];
+pcb_padding=[1, 1];
+plate_dimensions=[
+	button_spacing * 12 + pcb_padding.x*2,
+	button_spacing * 4+ pcb_padding.y *2,
+	plate_thickness
+];
 back_angling_offset=5;
 pcb_bottom_offset=1;
 usb_hole_padding=1;
@@ -72,24 +77,22 @@ module plate() {
 			cube(plate_dimensions);
 			translate([padding, padding, plate_top_pcb_offset - 1.5]) {
 				for(screw = screw_positions) {
-					translate(screw) cylinder(plate_top_pcb_offset - plate_thickness + 1, 3.5, 3.5, center = true);
+					translate(pcb_padding) translate(screw) cylinder(plate_top_pcb_offset - plate_thickness + 1, 3.5, 3.5, center = true);
 				}
 			}
 		}
-		translate([button_padding, button_padding, 0]) grid();
+		translate([button_padding + pcb_padding.x, button_padding + pcb_padding.y, 0]) grid();
 
 		for(screw = screw_positions) {
-			translate([padding, padding, 1]) translate(screw) cylinder(plate_top_pcb_offset + 1, 1.5, 1.5, center = false);
+			translate([pcb_padding.x, pcb_padding.y, 1]) translate(screw) cylinder(plate_top_pcb_offset + 1, 1.5, 1.5, center = false);
 		}
 	}
 }
 
 module usb_hole() {
-	width = usb_socket.x + usb_hole_padding + 4;
-	translate([-width / 2 + 1, 0, 0]) union() {
-		//TODO: Remove flat side and make hole smaller after removing bump from pcb
-		roundedCube([width, 20, usb_socket.z + usb_hole_padding + pcb.z], 1.3, false, true, false);
-		cube([usb_socket.x + usb_hole_padding + 4, 20, 2]);
+	width = usb_socket.x + usb_hole_padding * 2;
+	translate([-width / 2 + usb_hole_padding, 0, 0]) union() {
+		roundedCube([width, 20, usb_socket.z + usb_hole_padding], 1.3, true, true, true);
 	}
 }
 
@@ -121,10 +124,11 @@ module exterior() {
 			translate([0, 0 ,-1]) linear_extrude(20) {
 				square([plate_dimensions[0], plate_dimensions[1]]);
 			}
-			translate([usb_position, -10, plate_top_pcb_offset]) usb_hole();
+			translate([usb_position, -10, plate_top_pcb_offset + pcb.z]) usb_hole();
 			translate([pcb.x - 5, -1.8, 1.5]) logo();
 			back_angling();
 		}
+		translate([plate_dimensions.x / 2 - 40, -1, height - 1.5]) roundedCube([80, 30, 1.5]);
 		difference() {
 			union() {
 				translate([-1, -1, height - 2.45]) rotate([-3, 0, 0]) feet(2.5, 1, 1);
@@ -192,4 +196,4 @@ if(split)
 else
 	case();
 
-// translate([button_padding / 2, button_padding / 2, plate_top_pcb_offset]) pcb_mock();
+// render() translate([button_padding / 2, button_padding / 2, plate_top_pcb_offset]) pcb_mock();
