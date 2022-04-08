@@ -12,7 +12,7 @@ $fs = 0.4;
 
 padding=0;
 battery_pack=[180, 35];
-angle=5;
+angle=4;
 pcb_padding=[0.5, 0.5];
 plate_dimensions=[
 	button_spacing * 12 + pcb_padding.x*2,
@@ -23,12 +23,12 @@ thickness=3;
 plate_offset=0;
 back_angling_offset=5;
 usb_hole_padding=1.5;
-bottom_case_height=3 + thickness/2;
-top_case_height=plate_top_pcb_offset + pcb.z + plate_offset + thickness/2;
+top_case_height=plate_top_pcb_offset + pcb.z + plate_offset + thickness/2 + 0.5;
+
 dimensions = [
 	plate_dimensions.x + thickness,
 	plate_dimensions.y + thickness,
-	top_case_height + bottom_case_height
+	top_case_height + back_angling_offset + thickness
 ];
 
 module button(small_notch) {
@@ -125,18 +125,23 @@ module logo(withName) {
 }
 
 module exterior() {
-	height=dimensions.z - bottom_case_height;
-	difference() {
-		linear_extrude(height) {
-			offset(r=thickness) {
+	height=dimensions.z;
+	union() {
+		difference() {
+			linear_extrude(height) {
+				offset(r=thickness) {
+					square([plate_dimensions[0], plate_dimensions[1]]);
+				}
+			}
+			translate([0, 0 ,-1]) linear_extrude(20) {
 				square([plate_dimensions[0], plate_dimensions[1]]);
 			}
+			translate([pcb.x - 5, -thickness + 0.2, 2.5]) logo(withName=true);
+			translate([usb_position - usb_hole_padding / 2, -10, plate_top_pcb_offset + pcb.z + plate_offset - usb_hole_padding/2]) usb_hole();
+			back_angling();
 		}
-		translate([0, 0 ,-1]) linear_extrude(20) {
-			square([plate_dimensions[0], plate_dimensions[1]]);
-		}
-		translate([pcb.x - 5, -thickness + 0.2, 1.5]) scale([0.5, 1, 0.5]) logo(withName=true);
-		// back_angling();
+		translate([-1, -1, height - 3.8]) rotate([-5, 0, 0]) feet(3, 1, 1);
+		translate([dimensions.x - thickness + 1, -1, height - 3.8]) mirror([1, 0, 0]) rotate([-5, 0, 0]) feet(3, 1, 1);
 	}
 }
 
@@ -146,62 +151,10 @@ module top_case() {
 		exterior();
 	}
 }
-module top_bottom_notch(inner) {
-	translate([0, 0, dimensions.z - bottom_case_height - thickness / 2]) {
-		if(inner) {
-			difference() {
-				linear_extrude(thickness) {
-					offset(r=thickness) {
-						square([plate_dimensions[0], plate_dimensions[1]]);
-					}
-				}
-				translate([0, 0, -thickness / 2]) {
-					linear_extrude(thickness * 2) {
-						offset(r=thickness/2) {
-							square([plate_dimensions[0], plate_dimensions[1]]);
-						}
-					}
-				}
-			}
-		} else {
-			intersection() {
-				linear_extrude(thickness) {
-					offset(r=thickness) {
-						square([plate_dimensions[0], plate_dimensions[1]]);
-					}
-				}
-				translate([0, 0, -thickness / 2]) {
-					linear_extrude(thickness * 2) {
-						offset(r=thickness/2) {
-							square([plate_dimensions[0], plate_dimensions[1]]);
-						}
-					}
-				}
-			}
-		}
-	}
-}
+
 
 module case() {
-	difference() {
-		union() {
-			if(top) {
-				difference() {
-					top_case();
-					top_bottom_notch(false);
-					translate([usb_position - usb_hole_padding / 2, -10, plate_top_pcb_offset + pcb.z + plate_offset]) usb_hole();
-				}
-			}
-
-			if(bottom) {
-				difference() {
-					translate([0, 0, dimensions.z - bottom_case_height]) bottom_case();
-					top_bottom_notch(true);
-					translate([usb_position - usb_hole_padding / 2, -10, plate_top_pcb_offset + pcb.z + plate_offset]) usb_hole();
-				}
-			}
-		}
-	}
+	top_case();
 }
 
 module screw_mount() {
@@ -211,66 +164,24 @@ module screw_mount() {
 	}
 }
 
-module bottom_case() {
+module feet(height, margin_right, margin_top) {
 	difference() {
-		union() {
-			difference() {
-				linear_extrude(bottom_case_height) {
-					offset(r=thickness) {
-						square([plate_dimensions[0], plate_dimensions[1]]);
-					}
-				}
-				translate([0, 0, -2]) cube([plate_dimensions.x, plate_dimensions.y, bottom_case_height]);
-			}
-			for(screw = screw_positions) {
-				translate(pcb_padding) translate(screw) cylinder(4, 3.5, 3.5);
-			}
-			translate([dimensions.x / 2 - battery_pack.x / 2 - thickness / 2, 0, bottom_case_height]) {
-				battery_space();
-			}
+		linear_extrude(height) {
+			polygon(polyRound([
+				[0,    0,  0],
+				[0, 11 + margin_top,  0],
+				[26 + margin_right,  11 + margin_top,  2],
+				[26 + margin_right,  0,  0]
+			], 20));
 		}
-		for(screw = screw_positions) {
-			translate(pcb_padding) translate(screw) screw_mount();
-		}
-		translate([dimensions.x / 2 - battery_pack.x / 2 - thickness / 2, 0, bottom_case_height]) {
-			battery_hole();
-		}
-		translate([0, dimensions.y - 8.2 - thickness, thickness + 1]) feet();
-		translate([dimensions.x - 22.2 - thickness, dimensions.y - thickness - 8.2, thickness + 1]) feet();
-		translate([reset_button.x + pcb_padding.y, reset_button.y + pcb_padding.y, 1]) cylinder(thickness + 2, 1, 1);
+		translate([3, 2, 2])roundedCube([22.2, 8.2, 1], 4);
+		// translate([6, 6, 1]) cylinder(2, 4.5, 4.5);
 	}
 }
 
-module feet() {
-	roundedCube([22.2, 8.2, 1], 4);
-}
-
-
-pre_battery_space = dimensions.y - battery_pack.y - thickness;
-battery_y1=tan(angle) * pre_battery_space;
-battery_y2=tan(angle) * (dimensions.y - thickness);
-echo(str("Angles, battery_y1: ", battery_y1, " battery_y2: ", battery_y2, " pre: ", pre_battery_space));
-module battery_space() {
-	translate([battery_pack.x, battery_pack.y, 0])  {
-		difference() {
-			rotate([90, 0, -90]) {
-				linear_extrude(battery_pack.x) polygon([[0, 0] ,[battery_pack.y, 0], [battery_pack.y, battery_y2], [0, battery_y1]]);
-			}
-			translate([- 22.2 - thickness, - battery_pack.y + thickness, battery_y2 - 1]) rotate([-2, 0, 0]) feet();
-			translate([- battery_pack.x + thickness, - battery_pack.y + thickness, battery_y2 - 1]) rotate([-2, 0, 0]) feet();
-			translate([-battery_pack.x / 2 + 4.5, - battery_pack.y + 6, battery_y2 - 0.5]) rotate([-90 - angle, 0, 0]) logo();
-		}
-	}
-}
-
-module battery_hole() {
-	translate([battery_pack.x - thickness, battery_pack.y, -2]) rotate([90, 0, -90]) {
-		linear_extrude(battery_pack.x - 2 * 2) polygon([[2, 0] ,[battery_pack.y - 2, 0], [battery_pack.y - 2, battery_y2], [2, battery_y1]]);
-	}
-}
 
 module back_angling() {
-	translate([-10, -10, dimensions.z - bottom_case_height]) rotate([-5, 0, 0]) cube([dimensions.x + 20, dimensions.y + 20, 20]);
+	translate([-10, -10, dimensions.z ]) rotate([-angle, 0, 0]) cube([dimensions.x + 20, dimensions.y + 20, 20]);
 }
 
 module splitter() {
