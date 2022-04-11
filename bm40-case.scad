@@ -4,7 +4,7 @@ include <variables.scad>
 use <bm40-pcb-mock.scad>
 
 split=false;
-top=false;
+top=true;
 bottom=true;
 
 $fa = 1;
@@ -12,18 +12,18 @@ $fs = 0.4;
 
 padding=0;
 battery_pack=[180, 35];
-angle=5;
+angle=4;
 pcb_padding=[0.5, 0.5];
 plate_dimensions=[
 	button_spacing * 12 + pcb_padding.x*2,
 	button_spacing * 4+ pcb_padding.y *2,
 	plate_thickness
 ];
-thickness=3;
+thickness=4;
 plate_offset=0;
 back_angling_offset=5;
 usb_hole_padding=1.5;
-bottom_case_height=3 + thickness/2;
+bottom_case_height= 3 + thickness / 2;
 top_case_height=plate_top_pcb_offset + pcb.z + plate_offset + thickness/2;
 dimensions = [
 	plate_dimensions.x + thickness,
@@ -125,7 +125,7 @@ module logo(withName) {
 }
 
 module exterior() {
-	height=dimensions.z - bottom_case_height;
+	height=top_case_height;
 	difference() {
 		linear_extrude(height) {
 			offset(r=thickness) {
@@ -147,7 +147,7 @@ module top_case() {
 	}
 }
 module top_bottom_notch(inner) {
-	translate([0, 0, dimensions.z - bottom_case_height - thickness / 2]) {
+	translate([0, 0, top_case_height - thickness]) {
 		if(inner) {
 			difference() {
 				linear_extrude(thickness) {
@@ -195,7 +195,7 @@ module case() {
 
 			if(bottom) {
 				difference() {
-					translate([0, 0, dimensions.z - bottom_case_height]) bottom_case();
+					translate([0, 0, dimensions.z - bottom_case_height - thickness / 2]) bottom_case();
 					top_bottom_notch(true);
 					translate([usb_position - usb_hole_padding / 2, -10, plate_top_pcb_offset + pcb.z + plate_offset]) usb_hole();
 				}
@@ -235,8 +235,8 @@ module bottom_case() {
 		translate([dimensions.x / 2 - battery_pack.x / 2 - thickness / 2, 0, bottom_case_height]) {
 			battery_hole();
 		}
-		translate([0, dimensions.y - 8.2 - thickness, thickness + 1]) feet();
-		translate([dimensions.x - 22.2 - thickness, dimensions.y - thickness - 8.2, thickness + 1]) feet();
+		translate([0, dimensions.y - 8.2 - thickness, bottom_case_height - 0.5]) feet();
+		translate([dimensions.x - 22.2 - thickness, dimensions.y - thickness - 8.2, bottom_case_height - 0.5]) feet();
 		translate([reset_button.x + pcb_padding.y, reset_button.y + pcb_padding.y, 1]) cylinder(thickness + 2, 1, 1);
 	}
 }
@@ -265,7 +265,7 @@ module battery_space() {
 
 module battery_hole() {
 	translate([battery_pack.x - thickness, battery_pack.y, -2]) rotate([90, 0, -90]) {
-		linear_extrude(battery_pack.x - 2 * 2) polygon([[2, 0] ,[battery_pack.y - 2, 0], [battery_pack.y - 2, battery_y2], [2, battery_y1]]);
+		linear_extrude(battery_pack.x - thickness * 2) polygon([[thickness, 0] ,[battery_pack.y - thickness, 0], [battery_pack.y - 2, battery_y2], [2, battery_y1]]);
 	}
 }
 
