@@ -1,11 +1,14 @@
 include <roundedCube.scad>
 include <Round-Anything/polyround.scad>
 include <variables.scad>
+include <keyboard-grid.scad>
 use <bm40-pcb-mock.scad>
 
 split=false;
 top=true;
 bottom=true;
+mit_layout=false;
+thick=true;
 
 $fa = 1;
 $fs = 0.4;
@@ -17,84 +20,29 @@ pcb_padding=[0.5, 0.5];
 plate_dimensions=[
 	button_spacing * 12 + pcb_padding.x*2,
 	button_spacing * 4+ pcb_padding.y *2,
-	plate_thickness
+	thick ? plate_top_pcb_offset : plate_thickness
 ];
 thickness=4;
 plate_offset=0;
+plate_spacing=0.5;
 back_angling_offset=5;
 usb_hole_padding=1.5;
-bottom_case_height= 3 + thickness / 2;
+bottom_pcb_offset=3;
 top_case_height=plate_top_pcb_offset + pcb.z + plate_offset + thickness/2;
+bottom_case_height= top_case_height + bottom_pcb_offset + thickness / 2;
 dimensions = [
 	plate_dimensions.x + thickness,
 	plate_dimensions.y + thickness,
-	top_case_height + bottom_case_height
+	bottom_case_height
 ];
 
-module button(small_notch) {
-	notch_offset = small_notch ? 0.5 : 1;
-	union() {
-		cube([14, 14, 10]);
-		translate([-notch_offset, 1, 0]) cube([2, 3.2, 10]);
-		translate([-notch_offset, 10, 0]) cube([2, 3.2, 10]);
-		translate([12.2 + notch_offset, 1, 0]) cube([2, 3.2, 10]);
-		translate([12.2 + notch_offset, 10, 0]) cube([2, 3.2, 10]);
-	}
-}
-
-module button_stabilizer_hole(inverted) {
-	stablilizer_space_pos = inverted ? [1, -3.5, 5.5] : [8, 17.5, 5.5];
-	stabilizer_space_rotation = inverted ? [0, 90, 0] : [0, 90, 180];
-	roundedCube([8, 15, 10]);
-}
-
-module button_stabilizer_space(inverted) {
-	width = 33;
-	stablilizer_space_pos = inverted ? [0, -3.5, plate_thickness + 0.5] : [0, button_spacing - 8, plate_thickness + 0.5];
-	translate(stablilizer_space_pos)
-		cube([width, 6, 10]);
-}
-
-module button_2u(inverted) {
-	union() {
-		translate([button_spacing / 2, 0, 0]) button(true);
-		translate([0, -0.5, 0]) button_stabilizer_hole();
-		translate([33 - 7 - 1, -0.5, 0]) button_stabilizer_hole();
-		button_stabilizer_space(inverted);
-	}
-}
-
-module buttons(rows, cols) {
-	for (i=[0:1:cols - 1]) {
-		for (j=[0:1:rows - 1]) {
-			translate([i*button_spacing,j*button_spacing, -2]) button();
-		}
-	}
-}
-
-module grid() {
-	buttons(3, 12);
-	translate([0, button_spacing * 3, 0]) buttons(1, 5);
-	translate([button_spacing * 7, button_spacing * 3, 0]) buttons(1, 5);
-	translate([button_spacing * 5, button_spacing * 3, -2]) button_2u(true);
-}
-
-
 module plate() {
-	difference() {
-		union() {
-			cube(plate_dimensions);
-			translate([padding, padding, plate_top_pcb_offset - 1.5]) {
-				for(screw = screw_positions) {
-					translate(pcb_padding) translate(screw) cylinder(plate_top_pcb_offset - plate_thickness + 1, 3.5, 3.5, center = true);
-					// #translate([-5, -5, pcb.z]) translate(screw) cube([10, 10, pcb.z]);
-				}
-			}
-		}
-		translate([button_padding + pcb_padding.x, button_padding + pcb_padding.y, 0]) grid();
+	translate([plate_spacing, plate_spacing]) difference() {
+		cube([plate_dimensions.x - plate_spacing * 2, plate_dimensions.y - plate_spacing * 2, plate_dimensions.z]);
+		translate([button_padding, button_padding, 0]) buttons_grid();
 
 		for(screw = screw_positions) {
-			translate([pcb_padding.x, pcb_padding.y, 1]) translate(screw) cylinder(plate_top_pcb_offset + 1, 1.5, 1.5, center = false);
+			translate(screw) screw_mount();
 		}
 	}
 }
@@ -124,6 +72,17 @@ module logo(withName) {
 	}
 }
 
+module buttons_grid() {
+	if(mit_layout) {
+		buttons(3, 12);
+		translate([0, button_spacing * 3, 0]) buttons(1, 5);
+		translate([button_spacing * 7, button_spacing * 3, 0]) buttons(1, 5);
+		translate([button_spacing * 5, button_spacing * 3, -2]) button_2u(true);
+	} else {
+		buttons(4, 12);
+	}
+}
+
 module exterior() {
 	height=top_case_height;
 	difference() {
@@ -143,42 +102,7 @@ module exterior() {
 module top_case() {
 	union() {
 		render() translate([0, 0, plate_offset]) plate();
-		exterior();
-	}
-}
-module top_bottom_notch(inner) {
-	translate([0, 0, top_case_height - thickness]) {
-		if(inner) {
-			difference() {
-				linear_extrude(thickness) {
-					offset(r=thickness) {
-						square([plate_dimensions[0], plate_dimensions[1]]);
-					}
-				}
-				translate([0, 0, -thickness / 2]) {
-					linear_extrude(thickness * 2) {
-						offset(r=thickness/2) {
-							square([plate_dimensions[0], plate_dimensions[1]]);
-						}
-					}
-				}
-			}
-		} else {
-			intersection() {
-				linear_extrude(thickness) {
-					offset(r=thickness) {
-						square([plate_dimensions[0], plate_dimensions[1]]);
-					}
-				}
-				translate([0, 0, -thickness / 2]) {
-					linear_extrude(thickness * 2) {
-						offset(r=thickness/2) {
-							square([plate_dimensions[0], plate_dimensions[1]]);
-						}
-					}
-				}
-			}
-		}
+		// exterior();
 	}
 }
 
@@ -186,17 +110,12 @@ module case() {
 	difference() {
 		union() {
 			if(top) {
-				difference() {
-					top_case();
-					top_bottom_notch(false);
-					translate([usb_position - usb_hole_padding / 2, -10, plate_top_pcb_offset + pcb.z + plate_offset]) usb_hole();
-				}
+				top_case();
 			}
 
 			if(bottom) {
 				difference() {
 					translate([0, 0, dimensions.z - bottom_case_height - thickness / 2]) bottom_case();
-					top_bottom_notch(true);
 					translate([usb_position - usb_hole_padding / 2, -10, plate_top_pcb_offset + pcb.z + plate_offset]) usb_hole();
 				}
 			}
@@ -205,9 +124,13 @@ module case() {
 }
 
 module screw_mount() {
-	union() {
-		translate([0, 0, -1]) cylinder(bottom_case_height + 2, 1.2, 1.2);
-		translate([0, 0, bottom_case_height - 1]) cylinder(1.6, 1, 3);
+	if(thick) {
+		union() {
+			translate([0, 0, -1]) cylinder(plate_dimensions.z + 2, 1.2, 1.2);
+			translate([0, 0, -0.8]) cylinder(1.8, 3, 1);
+		}
+	} else {
+		cylinder(plate_thickness + 2, 1.8, 1.8, center = false);
 	}
 }
 
@@ -223,14 +146,16 @@ module bottom_case() {
 				translate([0, 0, -2]) cube([plate_dimensions.x, plate_dimensions.y, bottom_case_height]);
 			}
 			for(screw = screw_positions) {
-				translate(pcb_padding) translate(screw) cylinder(4, 3.5, 3.5);
+				translate([pcb_padding.x, pcb_padding.y, bottom_case_height - 2 - bottom_pcb_offset]) translate(screw) cylinder(4, 3.5, 3.5);
 			}
 			translate([dimensions.x / 2 - battery_pack.x / 2 - thickness / 2, 0, bottom_case_height]) {
 				battery_space();
 			}
 		}
 		for(screw = screw_positions) {
-			translate(pcb_padding) translate(screw) screw_mount();
+			translate([pcb_padding.x, pcb_padding.y, bottom_case_height - 2 - bottom_pcb_offset - 1])
+			translate(screw)
+			cylinder(bottom_pcb_offset + 2, 1.5, 1.5, center = false);
 		}
 		translate([dimensions.x / 2 - battery_pack.x / 2 - thickness / 2, 0, bottom_case_height]) {
 			battery_hole();
@@ -256,8 +181,8 @@ module battery_space() {
 			rotate([90, 0, -90]) {
 				linear_extrude(battery_pack.x) polygon([[0, 0] ,[battery_pack.y, 0], [battery_pack.y, battery_y2], [0, battery_y1]]);
 			}
-			translate([- 22.2 - thickness, - battery_pack.y + thickness, battery_y2 - 1]) rotate([-2, 0, 0]) feet();
-			translate([- battery_pack.x + thickness, - battery_pack.y + thickness, battery_y2 - 1]) rotate([-2, 0, 0]) feet();
+			translate([- 22.2 - thickness, - battery_pack.y + thickness, battery_y2 - 1]) feet();
+			translate([- battery_pack.x + thickness, - battery_pack.y + thickness, battery_y2 - 1]) feet();
 			translate([-battery_pack.x / 2 + 4.5, - battery_pack.y + 6, battery_y2 - 0.5]) rotate([-90 - angle, 0, 0]) logo();
 		}
 	}
@@ -297,4 +222,4 @@ if(split)
 else
 	case();
 
-*render() translate([button_padding / 2, button_padding / 2, plate_top_pcb_offset + plate_offset]) pcb_mock();
+*render() translate([pcb_padding.x, pcb_padding.y, plate_top_pcb_offset + plate_offset]) pcb_mock();

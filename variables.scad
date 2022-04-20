@@ -4,8 +4,8 @@ usb_position=38;
 usb_socket=[ 8.8, 6.4, 3.26 ];
 reset_button=[62, 60.5, 0];
 pcb=[229, 76.1, 1.6];
-plate_padding=1;
 // Cherry MX spec says plate has to be 1.5mm thick
+plate_top_pcb_offset=5;
 plate_thickness=3;
 case_top_bevel=2;
 screw_positions=[
@@ -15,4 +15,3 @@ screw_positions=[
 	[button_spacing * 11, button_spacing, 0],
 	[button_spacing * 11, button_spacing * 3, 0],
 ];
-plate_top_pcb_offset=5;
